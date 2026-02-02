@@ -1,0 +1,391 @@
+<!DOCTYPE html>
+<html lang="th">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>ระบบบัญชีค่าแรง - ร้านของฉัน</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+    <link href="https://fonts.googleapis.com/css2?family=Sarabun:wght@300;400;700&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/all.min.css">
+    <style>
+        body { font-family: 'Sarabun', sans-serif; background-color: #f8f9fa; }
+        .card { border-radius: 15px; border: none; box-shadow: 0 4px 15px rgba(0,0,0,0.05); }
+        .admin-section, .employee-section { display: none; }
+        .login-card { max-width: 400px; margin: 40px auto; }
+        .btn-line { background-color: #06c755; color: white; border: none; }
+        .btn-line:hover { background-color: #05a647; color: white; }
+        .delete-btn { color: #dc3545; cursor: pointer; border: 1px solid #dc3545; padding: 2px 8px; border-radius: 5px; font-size: 0.8rem; text-decoration: none; }
+        .badge-advance { background-color: #ff4757; color: white; padding: 2px 6px; border-radius: 4px; font-size: 0.7rem; margin-right: 5px; }
+    </style>
+</head>
+<body>
+
+<div class="container py-4">
+    <div class="text-center mb-4">
+        <h2 class="fw-bold text-dark">ระบบบัญชีค่าแรง</h2>
+        <p class="badge bg-white text-muted shadow-sm px-3 py-2" id="currentDateDisplay"></p>
+    </div>
+
+    <!-- ส่วนเลือกประเภทการเข้าใช้ -->
+    <div id="mainLogin" class="login-card">
+        <div class="card p-4 text-center shadow">
+            <h5 class="mb-4 fw-bold">เข้าใช้งานระบบ</h5>
+            <button class="btn btn-primary w-100 mb-3 py-3 fw-bold shadow-sm" onclick="showEmployeeLogin()">พนักงาน (เช็คเงินฝาก)</button>
+            <button class="btn btn-outline-secondary w-100 py-3 fw-bold" onclick="askAdminPassword()">เจ้าของร้าน (Admin)</button>
+        </div>
+    </div>
+
+    <!-- หน้าเลือกชื่อพนักงาน -->
+    <div id="employeeSelect" class="login-card" style="display:none;">
+        <div class="card p-4 shadow">
+            <h4 class="text-center mb-3 fw-bold">เลือกชื่อของคุณ</h4>
+            <div id="employeeNameButtons" class="d-grid gap-2"></div>
+            <button class="btn btn-link mt-3 text-secondary" onclick="location.reload()">ย้อนกลับ</button>
+        </div>
+    </div>
+
+    <!-- หน้าใส่ PIN พนักงาน -->
+    <div id="employeePinInput" class="login-card" style="display:none;">
+        <div class="card p-4 text-center shadow">
+            <h4 id="selectedEmpName" class="mb-3 text-primary fw-bold"></h4>
+            <p class="small text-muted">กรอกรหัส PIN ของคุณ</p>
+            <input type="password" id="empPin" class="form-control form-control-lg text-center mb-3" placeholder="****" inputmode="numeric">
+            <button class="btn btn-primary w-100 py-2 fw-bold" onclick="verifyEmpPin()">เข้าสู่ระบบ</button>
+            <button class="btn btn-link mt-2 text-secondary" onclick="showEmployeeLogin()">ย้อนกลับ</button>
+        </div>
+    </div>
+
+    <!-- ================= หน้าพนักงาน ================= -->
+    <div id="employeePortal" class="employee-section">
+        <div class="card p-4 mb-3 bg-primary text-white text-center shadow-lg">
+            <h6 class="opacity-75">เงินฝากสะสมทั้งหมดของคุณ</h6>
+            <h1 class="fw-bold" id="empBalanceDisplay">0.00</h1>
+            <div id="empAdvanceInfo" class="badge bg-danger mt-2 px-3 py-2" style="font-size: 0.9rem;">ยอดรวมที่เบิกไป: 0</div>
+            <div class="mt-2 small opacity-75">ยอดสุทธิที่จะได้รับ: <span id="empNetDisplay">0</span></div>
+        </div>
+        <div class="card p-3 shadow-sm">
+            <h6 class="fw-bold mb-3 border-bottom pb-2">ประวัติการเงินล่าสุด</h6>
+            <div class="table-responsive">
+                <table class="table table-sm small text-center">
+                    <thead class="table-light"><tr><th>วันที่</th><th>รับเงิน</th><th>ฝากเพิ่ม</th></tr></thead>
+                    <tbody id="empHistoryTable"></tbody>
+                </table>
+            </div>
+            <button class="btn btn-outline-secondary w-100 mt-3" onclick="location.reload()">ออกจากระบบ</button>
+        </div>
+    </div>
+
+    <!-- ================= หน้าเจ้าของร้าน (Admin) ================= -->
+    <div id="adminPanel" class="admin-section">
+        <div class="d-flex justify-content-between align-items-center mb-3">
+            <h4 class="fw-bold text-primary m-0">แผงควบคุมร้าน</h4>
+            <button class="btn btn-dark btn-sm" onclick="location.reload()">Logout</button>
+        </div>
+
+        <ul class="nav nav-pills nav-fill mb-3 bg-white rounded p-1 shadow-sm" id="adminTab">
+            <li class="nav-item"><button class="nav-link active" data-bs-toggle="tab" data-bs-target="#tab-daily">ลงเวลาวันนี้</button></li>
+            <li class="nav-item"><button class="nav-link" data-bs-toggle="tab" data-bs-target="#tab-mom">สรุปส่งแม่</button></li>
+            <li class="nav-item"><button class="nav-link" data-bs-toggle="tab" data-bs-target="#tab-manage">จัดการคน</button></li>
+        </ul>
+
+        <div class="tab-content">
+            <!-- 1. ลงเวลา -->
+            <div class="tab-pane fade show active" id="tab-daily">
+                <div id="dailyEntryList" class="d-grid gap-2"></div>
+            </div>
+
+            <!-- 2. สรุปส่งแม่ -->
+            <div class="tab-pane fade" id="tab-mom">
+                <div class="card p-3 mb-3 border-success border-2 shadow-sm">
+                    <div class="d-flex justify-content-between align-items-center mb-2">
+                        <h6 class="text-success fw-bold m-0">รายงานวันนี้ (แก้ไขได้)</h6>
+                        <button class="btn btn-line btn-sm fw-bold shadow-sm" onclick="copyDailyReport()">คัดลอกส่ง LINE</button>
+                    </div>
+                    <div class="table-responsive">
+                        <table class="table table-sm small text-center align-middle">
+                            <thead class="table-light"><tr><th>ชื่อ</th><th>โอน</th><th>สด</th><th>ฝาก</th><th>ลบ</th></tr></thead>
+                            <tbody id="todayReportBody"></tbody>
+                        </table>
+                    </div>
+                </div>
+                <div class="card p-3 shadow-sm">
+                    <div class="d-flex justify-content-between align-items-center mb-2">
+                        <h6 class="text-primary fw-bold m-0">ยอดสะสมสุทธิ (จ่ายสิ้นเดือน)</h6>
+                        <button class="btn btn-outline-primary btn-sm fw-bold" onclick="copyMonthlyReport()">คัดลอก</button>
+                    </div>
+                    <div id="monthlySummaryBody"></div>
+                </div>
+            </div>
+
+            <!-- 3. จัดการพนักงาน -->
+            <div class="tab-pane fade" id="tab-manage">
+                <div class="card p-3 mb-3 shadow-sm">
+                    <h6 class="fw-bold">+ เพิ่มพนักงาน</h6>
+                    <div class="row g-2">
+                        <div class="col-12"><input type="text" id="newName" class="form-control" placeholder="ชื่อพนักงาน"></div>
+                        <div class="col-6"><input type="number" id="newWage" class="form-control" placeholder="ค่าแรง"></div>
+                        <div class="col-6"><input type="text" id="newPin" class="form-control" placeholder="PIN 4 หลัก"></div>
+                        <button class="btn btn-primary fw-bold mt-2" onclick="addEmployee()">บันทึก</button>
+                    </div>
+                </div>
+                <div id="adminEmpList"></div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Modal บันทึกค่าแรง -->
+<div class="modal fade" id="recordModal" tabindex="-1">
+    <div class="modal-dialog modal-dialog-centered">
+        <div class="modal-content shadow-lg border-0">
+            <div class="modal-header border-0 pb-0"><h5 class="fw-bold" id="modalEmpName"></h5></div>
+            <div class="modal-body">
+                <div class="mb-3"><label class="small fw-bold">ค่าแรงวันนี้</label><input type="number" id="mWage" class="form-control form-control-lg bg-light"></div>
+                <div class="row">
+                    <div class="col-6"><label class="small fw-bold text-primary">ยอดโอน</label><input type="number" id="mPaidTransfer" class="form-control form-control-lg border-primary" value="0"></div>
+                    <div class="col-6"><label class="small fw-bold text-warning">ยอดเงินสด</label><input type="number" id="mPaidCash" class="form-control form-control-lg border-warning" value="0"></div>
+                </div>
+                <div id="depositAlert" class="alert alert-info mt-3 mb-0 py-2 small fw-bold text-center">ฝากเพิ่ม: <span id="mDeposit">0</span> บาท</div>
+            </div>
+            <div class="modal-footer border-0">
+                <button class="btn btn-danger me-auto fw-bold" onclick="recordAdvance()">เบิกล่วงหน้า</button>
+                <button class="btn btn-secondary" data-bs-dismiss="modal">ปิด</button>
+                <button class="btn btn-primary px-4 fw-bold" onclick="saveDaily()">บันทึก</button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<script type="module">
+    import { initializeApp } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-app.js";
+    import { getDatabase, ref, set, push, onValue, update, remove, get } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-database.js";
+
+    const firebaseConfig = {
+        apiKey: "AIzaSyAmAmceLCl40QTnWe3Prso-psMN6jNnY-U",
+        authDomain: "supertest02-689bd.firebaseapp.com",
+        databaseURL: "https://supertest02-689bd-default-rtdb.asia-southeast1.firebasedatabase.app",
+        projectId: "supertest02-689bd",
+        appId: "1:941347468855:web:b19101cd3237d1896bb1b2"
+    };
+
+    const app = initializeApp(firebaseConfig);
+    const db = getDatabase(app);
+    let employeesGlobal = {};
+    let currentId = "";
+    const MASTER_KEY = "202429";
+
+    // --- ส่วนเจ้าของร้าน ---
+    window.askAdminPassword = () => {
+        if (prompt("รหัส Master:") === MASTER_KEY) {
+            document.getElementById('mainLogin').style.display = 'none';
+            document.getElementById('adminPanel').style.display = 'block';
+            loadAdminData();
+        } else { alert("รหัสผิด!"); }
+    };
+
+    function loadAdminData() {
+        onValue(ref(db, 'employees'), (snap) => {
+            employeesGlobal = snap.val() || {};
+            renderAdminViews();
+        });
+    }
+
+    function renderAdminViews() {
+        let dailyBtnHtml = '';
+        let manageHtml = '';
+        let monthlyHtml = '<table class="table table-sm small text-center"><thead><tr><th>ชื่อ</th><th>ฝาก</th><th>เบิก</th><th>สุทธิ</th><th>ล้าง</th></tr></thead><tbody>';
+
+        Object.keys(employeesGlobal).forEach(id => {
+            const emp = employeesGlobal[id];
+            dailyBtnHtml += `<button class="btn btn-outline-dark text-start p-3 bg-white mb-2 shadow-sm" onclick="openModal('${id}')"><b>${emp.name}</b> <span class="float-end">➔</span></button>`;
+            manageHtml += `<div class="card p-3 mb-2 d-flex flex-row justify-content-between align-items-center shadow-sm">
+                <span><b>${emp.name}</b><br><small class="text-muted">แรง: ${emp.dailyWage} | PIN: ${emp.pin}</small></span>
+                <div>
+                    <button class="btn btn-sm btn-outline-primary me-2 fw-bold" onclick="editEmployee('${id}', '${emp.name}', ${emp.dailyWage}, '${emp.pin}')">แก้ไข</button>
+                    <button class="btn btn-sm btn-danger" onclick="deleteEmp('${id}')"><i class="fas fa-trash"></i></button>
+                </div>
+            </div>`;
+            const net = (emp.balance || 0) - (emp.advance || 0);
+            monthlyHtml += `<tr><td>${emp.name}</td><td>${emp.balance || 0}</td><td>${emp.advance || 0}</td><td class="fw-bold">${net}</td><td><button class="btn btn-link btn-sm" onclick="clearCycle('${id}')">ล้าง</button></td></tr>`;
+        });
+        document.getElementById('dailyEntryList').innerHTML = dailyBtnHtml;
+        document.getElementById('adminEmpList').innerHTML = manageHtml;
+        document.getElementById('monthlySummaryBody').innerHTML = monthlyHtml + '</tbody></table>';
+        updateTodayReport();
+    }
+
+    async function updateTodayReport() {
+        const todayStr = new Date().toLocaleDateString('th-TH');
+        let html = '';
+        for (let empId of Object.keys(employeesGlobal)) {
+            const snap = await get(ref(db, `logs/${empId}`));
+            const logs = snap.val();
+            if (logs) {
+                Object.keys(logs).forEach(logId => {
+                    const log = logs[logId];
+                    if (log.date && log.date.includes(todayStr)) {
+                        const isAdv = log.type === "เบิก";
+                        html += `<tr>
+                            <td>${employeesGlobal[empId].name}</td>
+                            <td class="${log.paidTransfer > 0 ? 'fw-bold text-primary' : ''}">${isAdv && log.paidTransfer > 0 ? '<span class="badge-advance">เบิก</span>' : ''}${log.paidTransfer || 0}</td>
+                            <td class="${log.paidCash > 0 ? 'fw-bold text-warning' : ''}">${isAdv && log.paidCash > 0 ? '<span class="badge-advance">เบิก</span>' : ''}${log.paidCash || 0}</td>
+                            <td class="text-success fw-bold">${log.deposit || 0}</td>
+                            <td><a href="#" class="delete-btn" onclick="deleteDailyLog('${empId}', '${logId}', ${log.deposit || 0}, '${log.type}')">ลบ</a></td>
+                        </tr>`;
+                    }
+                });
+            }
+        }
+        document.getElementById('todayReportBody').innerHTML = html || '<tr><td colspan="5" class="p-3 text-muted">ยังไม่มีข้อมูล</td></tr>';
+    }
+
+    window.openModal = (id) => {
+        currentId = id;
+        document.getElementById('modalEmpName').innerText = "ลงเวลา: " + employeesGlobal[id].name;
+        document.getElementById('mWage').value = employeesGlobal[id].dailyWage;
+        document.getElementById('mPaidTransfer').value = 0;
+        document.getElementById('mPaidCash').value = 0;
+        updateCalc();
+        new bootstrap.Modal(document.getElementById('recordModal')).show();
+    };
+
+    const updateCalc = () => {
+        const wage = parseFloat(document.getElementById('mWage').value) || 0;
+        const dep = wage - (parseFloat(document.getElementById('mPaidTransfer').value) || 0) - (parseFloat(document.getElementById('mPaidCash').value) || 0);
+        document.getElementById('mDeposit').innerText = dep;
+    };
+    ['mWage', 'mPaidTransfer', 'mPaidCash'].forEach(id => document.getElementById(id).addEventListener('input', updateCalc));
+
+    window.saveDaily = () => {
+        const wage = parseFloat(document.getElementById('mWage').value) || 0;
+        const t = parseFloat(document.getElementById('mPaidTransfer').value) || 0;
+        const c = parseFloat(document.getElementById('mPaidCash').value) || 0;
+        const dep = wage - (t + c);
+        push(ref(db, `logs/${currentId}`), { date: new Date().toLocaleString('th-TH'), wage, paidTransfer: t, paidCash: c, deposit: dep, type: "รายวัน" });
+        update(ref(db, `employees/${currentId}`), { balance: (employeesGlobal[currentId].balance || 0) + dep });
+        bootstrap.Modal.getInstance(document.getElementById('recordModal')).hide();
+        updateTodayReport();
+    };
+
+    window.recordAdvance = async () => {
+        const amt = parseFloat(prompt("ระบุยอดที่ต้องการเบิกล่วงหน้า:"));
+        if (!amt || isNaN(amt)) return;
+        
+        const typeChoice = confirm("เลือก 'ตกลง' สำหรับเงินโอน หรือ 'ยกเลิก' สำหรับเงินสด");
+        const t = typeChoice ? amt : 0;
+        const c = typeChoice ? 0 : amt;
+
+        await push(ref(db, `logs/${currentId}`), { 
+            date: new Date().toLocaleString('th-TH'), 
+            wage: 0, paidTransfer: t, paidCash: c, deposit: -amt, type: "เบิก" 
+        });
+        await update(ref(db, `employees/${currentId}`), { advance: (employeesGlobal[currentId].advance || 0) + amt });
+        bootstrap.Modal.getInstance(document.getElementById('recordModal')).hide();
+        alert("บันทึกการเบิกเรียบร้อย");
+        updateTodayReport();
+    };
+
+    window.copyDailyReport = () => {
+        let text = `📌 รายงานค่าแรงรายวัน (${new Date().toLocaleDateString('th-TH')})\n\n`;
+        const rows = document.querySelectorAll("#todayReportBody tr");
+        if (rows.length === 0 || rows[0].innerText.includes("ไม่มี")) { alert("ไม่มีข้อมูล"); return; }
+        
+        rows.forEach(row => {
+            const cols = row.querySelectorAll("td");
+            if (cols.length < 4) return;
+            const name = cols[0].innerText;
+            const tVal = cols[1].innerText;
+            const cVal = cols[2].innerText;
+            
+            let line = `- ${name}: `;
+            if (tVal !== "0") line += `โอน ${tVal} `;
+            if (cVal !== "0") line += `สด ${cVal} `;
+            text += line.trim() + "\n";
+        });
+        navigator.clipboard.writeText(text); alert("คัดลอกส่ง LINE แล้ว");
+    };
+
+    window.copyMonthlyReport = () => {
+        let txt = `💰 ยอดสะสมสุทธิ (${new Date().toLocaleDateString('th-TH')})\n\n`;
+        Object.keys(employeesGlobal).forEach(id => {
+            const emp = employeesGlobal[id];
+            txt += `- ${emp.name}: ${(emp.balance || 0) - (emp.advance || 0)} บาท\n`;
+        });
+        navigator.clipboard.writeText(txt); alert("คัดลอกยอดสะสมแล้ว");
+    };
+
+    window.deleteDailyLog = async (empId, logId, deposit, type) => {
+        if (!confirm("ลบรายการนี้? (ระบบจะปรับยอดเงินคืนให้)")) return;
+        await remove(ref(db, `logs/${empId}/${logId}`));
+        const empSnap = await get(ref(db, `employees/${empId}`));
+        const emp = empSnap.val();
+        if (type === "เบิก") {
+            await update(ref(db, `employees/${empId}`), { advance: (emp.advance || 0) - Math.abs(deposit) });
+        } else {
+            await update(ref(db, `employees/${empId}`), { balance: (emp.balance || 0) - deposit });
+        }
+        updateTodayReport();
+    };
+
+    window.clearCycle = (id) => { if(confirm("ล้างยอดของคนนี้?")) update(ref(db, `employees/${id}`), { balance: 0, advance: 0 }); };
+    window.editEmployee = (id, n, w, p) => {
+        const name = prompt("ชื่อใหม่:", n); if(!name) return;
+        const wage = prompt("ค่าแรงใหม่:", w); if(!wage) return;
+        const pin = prompt("PIN ใหม่:", p); if(!pin) return;
+        update(ref(db, `employees/${id}`), { name, dailyWage: parseFloat(wage), pin });
+    };
+    window.addEmployee = () => {
+        const n = document.getElementById('newName').value;
+        const w = document.getElementById('newWage').value;
+        const p = document.getElementById('newPin').value;
+        if(n && w && p) push(ref(db, 'employees'), { name: n, dailyWage: parseFloat(w), pin: p, balance: 0, advance: 0 });
+    };
+    window.deleteEmp = (id) => { if(confirm("ลบพนักงาน?")) remove(ref(db, `employees/${id}`)); };
+
+    // --- ส่วนพนักงาน ---
+    window.showEmployeeLogin = () => {
+        document.getElementById('mainLogin').style.display = 'none';
+        document.getElementById('employeeSelect').style.display = 'block';
+        onValue(ref(db, 'employees'), (snap) => {
+            const emps = snap.val() || {};
+            let h = '';
+            Object.keys(emps).forEach(id => h += `<button class="btn btn-light border p-3 fw-bold mb-2 shadow-sm text-start" onclick="selectEmp('${id}', '${emps[id].name}')">${emps[id].name}</button>`);
+            document.getElementById('employeeNameButtons').innerHTML = h;
+        });
+    };
+    window.selectEmp = (id, name) => {
+        currentId = id;
+        document.getElementById('selectedEmpName').innerText = "คุณ " + name;
+        document.getElementById('employeeSelect').style.display = 'none';
+        document.getElementById('employeePinInput').style.display = 'block';
+    };
+    window.verifyEmpPin = async () => {
+        const pin = document.getElementById('empPin').value;
+        const snap = await get(ref(db, `employees/${currentId}`));
+        if (snap.val() && pin === snap.val().pin.toString()) {
+            document.getElementById('employeePinInput').style.display = 'none';
+            document.getElementById('employeePortal').style.display = 'block';
+            onValue(ref(db, `employees/${currentId}`), (s) => {
+                const d = s.val();
+                document.getElementById('empBalanceDisplay').innerText = (d.balance || 0).toLocaleString();
+                document.getElementById('empAdvanceInfo').innerText = `ยอดเบิกไปแล้ว: ${d.advance || 0}`;
+                document.getElementById('empNetDisplay').innerText = ((d.balance || 0) - (d.advance || 0)).toLocaleString();
+            });
+            onValue(ref(db, `logs/${currentId}`), (s) => {
+                const logs = s.val() || {};
+                let h = '';
+                Object.keys(logs).reverse().slice(0, 30).forEach(id => {
+                    const l = logs[id];
+                    const info = l.type === "เบิก" ? " <span class='text-danger'>(เบิก)</span>" : "";
+                    h += `<tr><td>${l.date.split(' ')[0]}</td><td>โอน ${l.paidTransfer}/สด ${l.paidCash}${info}</td><td class="text-success fw-bold">${l.deposit}</td></tr>`;
+                });
+                document.getElementById('empHistoryTable').innerHTML = h;
+            });
+        } else { alert("PIN ไม่ถูกต้อง"); }
+    };
+
+    document.getElementById('currentDateDisplay').innerText = new Date().toLocaleDateString('th-TH', { weekday: 'long', day: 'numeric', month: 'long', year: 'numeric' });
+</script>
+<script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
+</body>
+</html>
