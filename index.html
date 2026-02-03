@@ -1,3 +1,5 @@
+
+
 <!DOCTYPE html>
 <html lang="th">
 <head>
@@ -129,6 +131,24 @@
                     </div>
                 </div>
                 <div id="adminEmpList"></div>
+
+                <!-- ระบบสำรองข้อมูล (เพิ่มใหม่) -->
+                <div class="card p-3 mt-4 border-dashed shadow-sm bg-light">
+                    <h6 class="fw-bold text-muted mb-3"><i class="fas fa-database me-2"></i>จัดการข้อมูลระบบ</h6>
+                    <div class="row g-2">
+                        <div class="col-6">
+                            <button class="btn btn-outline-secondary btn-sm w-100 fw-bold" onclick="exportBackup()">
+                                <i class="fas fa-download me-1"></i> สำรองข้อมูล
+                            </button>
+                        </div>
+                        <div class="col-6">
+                            <button class="btn btn-outline-danger btn-sm w-100 fw-bold" onclick="document.getElementById('importFile').click()">
+                                <i class="fas fa-upload me-1"></i> กู้คืนข้อมูล
+                            </button>
+                            <input type="file" id="importFile" hidden accept=".json" onchange="importBackup(event)">
+                        </div>
+                    </div>
+                </div>
             </div>
         </div>
     </div>
@@ -341,6 +361,72 @@
         if(n && w && p) push(ref(db, 'employees'), { name: n, dailyWage: parseFloat(w), pin: p, balance: 0, advance: 0 });
     };
     window.deleteEmp = (id) => { if(confirm("ลบพนักงาน?")) remove(ref(db, `employees/${id}`)); };
+
+    // --- ส่วนเพิ่มใหม่: Backup & Restore ---
+    window.exportBackup = async () => {
+        try {
+            const snap = await get(ref(db, "/"));
+            const data = snap.val();
+            if (!data) return alert("ไม่มีข้อมูลในระบบ");
+
+            // หาช่วงวันที่จาก logs
+            let allDates = [];
+            if (data.logs) {
+                Object.values(data.logs).forEach(userLogs => {
+                    Object.values(userLogs).forEach(log => {
+                        if (log.date) allDates.push(log.date.split(' ')[0]);
+                    });
+                });
+            }
+            
+            let dateRangeText = "";
+            if (allDates.length > 0) {
+                // จัดเรียงวันที่ (รูปแบบ dd/mm/yyyy อาจต้องแปลงก่อนเทียบ)
+                const sortedDates = allDates.sort((a,b) => {
+                    const da = a.split('/').reverse().join('');
+                    const db = b.split('/').reverse().join('');
+                    return da > db ? 1 : -1;
+                });
+                dateRangeText = `วันที่ ${sortedDates[0]} ถึงวันที่ ${sortedDates[sortedDates.length - 1]}`;
+            } else {
+                dateRangeText = `วันที่ ${new Date().toLocaleDateString('th-TH')}`;
+            }
+
+            const fileName = `บันทึกข้อมูลค่าแรง ${dateRangeText}.json`;
+            const blob = new Blob([JSON.stringify(data, null, 2)], { type: "application/json" });
+            const url = URL.createObjectURL(blob);
+            const a = document.createElement("a");
+            a.href = url;
+            a.download = fileName;
+            a.click();
+            URL.revokeObjectURL(url);
+        } catch (e) { alert("เกิดข้อผิดพลาดในการสำรองข้อมูล"); }
+    };
+
+    window.importBackup = async (event) => {
+        const file = event.target.files[0];
+        if (!file) return;
+
+        if (!confirm("⚠️ คำเตือน: การกู้คืนข้อมูลจะเขียนทับข้อมูลปัจจุบันทั้งหมดในระบบ คุณต้องการดำเนินการต่อหรือไม่?")) {
+            event.target.value = "";
+            return;
+        }
+
+        const reader = new FileReader();
+        reader.onload = async (e) => {
+            try {
+                const json = JSON.parse(e.target.result);
+                if (json.employees) {
+                    await set(ref(db, "/"), json);
+                    alert("กู้คืนข้อมูลสำเร็จ ระบบจะรีโหลด");
+                    location.reload();
+                } else {
+                    alert("รูปแบบไฟล์ไม่ถูกต้อง");
+                }
+            } catch (err) { alert("ไฟล์เสียหรือไม่ใช่ JSON"); }
+        };
+        reader.readAsText(file);
+    };
 
     // --- ส่วนพนักงาน ---
     window.showEmployeeLogin = () => {
