@@ -100,7 +100,7 @@
             <div class="tab-pane fade" id="tab-mom">
                 <div class="card p-3 mb-3 border-success border-2 shadow-sm">
                     <div class="d-flex justify-content-between align-items-center mb-2">
-                        <h6 class="text-success fw-bold m-0">รายงานวันนี้ (แก้ไขได้)</h6>
+                        <h6 class="text-success fw-bold m-0">รายงานวันนี้ (แก้ไขได้) <span id="todayTotalSum" class="badge bg-success ms-1">รวม 0</span></h6>
                         <button class="btn btn-line btn-sm fw-bold shadow-sm" onclick="copyDailyReport()">คัดลอกส่ง LINE</button>
                     </div>
                     <div class="table-responsive">
@@ -237,6 +237,7 @@
     async function updateTodayReport() {
         const todayStr = new Date().toLocaleDateString('th-TH');
         let html = '';
+        let totalTransfer = 0, totalCash = 0, totalDeposit = 0;
         for (let empId of Object.keys(employeesGlobal)) {
             const snap = await get(ref(db, `logs/${empId}`));
             const logs = snap.val();
@@ -245,6 +246,9 @@
                     const log = logs[logId];
                     if (log.date && log.date.includes(todayStr)) {
                         const isAdv = log.type === "เบิก";
+                        totalTransfer += log.paidTransfer || 0;
+                        totalCash += log.paidCash || 0;
+                        totalDeposit += log.deposit || 0;
                         html += `<tr>
                             <td>${employeesGlobal[empId].name}</td>
                             <td class="${log.paidTransfer > 0 ? 'fw-bold text-primary' : ''}">${isAdv && log.paidTransfer > 0 ? '<span class="badge-advance">เบิก</span>' : ''}${log.paidTransfer || 0}</td>
@@ -257,6 +261,11 @@
             }
         }
         document.getElementById('todayReportBody').innerHTML = html || '<tr><td colspan="5" class="p-3 text-muted">ยังไม่มีข้อมูล</td></tr>';
+        const totalAll = totalTransfer + totalCash + totalDeposit;
+        const totalEl = document.getElementById('todayTotalSum');
+        if (totalEl) {
+            totalEl.innerText = `รวม ${totalAll.toLocaleString('th-TH')} บาท`;
+        }
     }
 
     window.openModal = (id) => {
@@ -310,18 +319,22 @@
         const rows = document.querySelectorAll("#todayReportBody tr");
         if (rows.length === 0 || rows[0].innerText.includes("ไม่มี")) { alert("ไม่มีข้อมูล"); return; }
         
+        let sumAll = 0;
         rows.forEach(row => {
             const cols = row.querySelectorAll("td");
             if (cols.length < 4) return;
             const name = cols[0].innerText;
             const tVal = cols[1].innerText;
             const cVal = cols[2].innerText;
+            const dVal = cols[3].innerText;
+            sumAll += (parseFloat(tVal) || 0) + (parseFloat(cVal) || 0) + (parseFloat(dVal) || 0);
             
             let line = `- ${name}: `;
             if (tVal !== "0") line += `โอน ${tVal} `;
             if (cVal !== "0") line += `สด ${cVal} `;
             text += line.trim() + "\n";
         });
+        text += `\nรวมทั้งหมด: ${sumAll.toLocaleString('th-TH')} บาท`;
         navigator.clipboard.writeText(text); alert("คัดลอกส่ง LINE แล้ว");
     };
 
